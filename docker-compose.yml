@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dashcam_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - dashcam_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: dashcam_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - dashcam_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: dashcam_api
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - video_storage:/var/data/videos
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dashcam_network
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: docker/celery/Dockerfile
+    container_name: dashcam_celery
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - video_storage:/var/data/videos
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dashcam_network
+
+  osrm-backend:
+    image: osrm/osrm-backend
+    container_name: dashcam_osrm
+    volumes:
+      - osrm_data:/data
+    ports:
+      - "5000:5000"
+    networks:
+      - dashcam_network
+    command: osrm-routed --algorithm mld /data/map.osrm
+
+  nginx:
+    image: nginx:alpine
+    container_name: dashcam_nginx
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+    networks:
+      - dashcam_network
+
+volumes:
+  mysql_data:
+  video_storage:
+  osrm_data:
+
+networks:
+  dashcam_network:
+    driver: bridge
