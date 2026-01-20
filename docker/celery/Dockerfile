@@ -1,26 +1,27 @@
-FROM python:3.11-slim
+# Dockerfile
 
-# Set working directory
+# Use the official Python image as a parent image
+FROM python:3.8-slim
+
+# Set the working directory
 WORKDIR /app
 
-# Install system dependencies including FFmpeg
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    libmariadb-dev \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y libgl1 && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+# Copy the current directory contents into the container at /app
+COPY . .
 
-# Install Python dependencies
+# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY app /app/app
+# Make port 80 available to the world outside this container
+EXPOSE 80
 
-# Run Celery worker
-CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info"]
+# Define environment variable
+ENV NAME World
+
+# Run app.py when the container launches
+CMD ["python", "app.py"]
