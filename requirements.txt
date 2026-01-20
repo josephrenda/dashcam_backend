@@ -16,7 +16,7 @@ ultralytics==8.1.11
 easyocr==1.7.1
 numpy==1.26.3
 pillow==10.3.0
-torch==2.6.0
+torch==2.1.2
 torchvision==0.16.2
 httpx==0.26.0
 requests==2.31.0
