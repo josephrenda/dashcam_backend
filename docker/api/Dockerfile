@@ -1,22 +1,28 @@
-# Use the official Python image.
-FROM python:3.8-slim
+FROM python:3.11-slim
 
-# Set the working directory in the container.
-WORKDIR /usr/src/app
+# Set working directory
+WORKDIR /app
 
-# Install dependencies.
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install system packages.
-RUN apt-get update \
-    && apt-get install -y \
-    libgl1 \ 
-    && apt-get clean \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libmariadb-dev \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the rest of the application.
-COPY . .
+# Copy requirements
+COPY requirements.txt .
 
-# Command to run the application.
-CMD ["python", "app.py"]
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY app /app/app
+
+# Expose port
+EXPOSE 8000
+
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
